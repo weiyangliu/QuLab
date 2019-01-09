@@ -567,7 +567,7 @@ AlazarWriteRegister = __get_Func("AlazarWriteRegister", RETURN_CODE, [HANDLE, U3
 # DAC CONTROL API
 #RETURN_CODE AlazarDACSetting
 #(HANDLE h, U32 SetGet, U32 OriginalOrModified, U8 Channel, U32 DACNAME, U32 Coupling, U32 InputRange, U32 Impedance, U32 *getVal, U32 setVal, U32 *error);
-AlazarDACSetting = __get_Func("AlazarDACSetting", RETURN_CODE, [HANDLE, U32, U32, U8, U32, U32, U32, U32, PU32, U32, PU32])
+# AlazarDACSetting = __get_Func("AlazarDACSetting", RETURN_CODE, [HANDLE, U32, U32, U8, U32, U32, U32, U32, PU32, U32, PU32])
 
 #RETURN_CODE
 #AlazarConfigureAuxIO (
