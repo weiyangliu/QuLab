@@ -98,12 +98,12 @@ class Driver(BaseDriver):
     def get_Phase(self, ch=1, formated=False):
         '''Get the complex value of S paramenter or formated data'''
         #Select the measurement
-        self.pna_select(ch)
-        #Stop the sweep
-        self.setValue('Sweep', 'OFF')
-        #Begin a measurement
-        self.write('INIT:IMM')
-        self.write('*WAI')
+        # self.pna_select(ch)
+        # #Stop the sweep
+        # self.setValue('Sweep', 'OFF')
+        # #Begin a measurement
+        # self.write('INIT:IMM')
+        # self.write('*WAI')
         #Get the data
         #self.write('FORMAT:BORD NORM')
         self.write('CALC%d:SEL:FORM Phase')
