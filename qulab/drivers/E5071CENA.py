@@ -103,16 +103,16 @@ class Driver(BaseDriver):
         # self.setValue('Sweep', 'OFF')
         # #Begin a measurement
         # self.write('INIT:IMM')
-        # self.write('*WAI')
+        self.write('*WAI')
         #Get the data
         #self.write('FORMAT:BORD NORM')
         self.write('CALC%d:SEL:FORM Phase')
         if self.model in ['E5071C']:
             self.write(':FORM:DATA ASCII')
-            cmd = ("CALC%d:DATA:FDATA?" % ch) if formated else ("CALC%d:DATA:SDATA?" % ch)
+            cmd = ("CALC%d:DATA:FDATA?" % ch)
         else:
             self.write('FORMAT ASCII')
-            cmd = ("CALC%d:DATA? FDATA" % ch) if formated else ("CALC%d:DATA? SDATA" % ch)
+            cmd = ("CALC%d:DATA? FDATA" % ch)
         data = np.asarray(self.query_ascii_values(cmd))
         if formated:
             if self.model in ['E5071C']:
