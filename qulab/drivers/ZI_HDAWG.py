@@ -160,6 +160,7 @@ class Driver(BaseDriver):
             const amplitude = 1;
             while(1){
                 waitDigTrigger(1);
+                waitWave();
                 playWave(1,amplitude* w_wave,2,amplitude* w_wave2);}
             """)
         awg_program = awg_program.replace('_wave_', ','.join([str(x) for x in self.getValue('waveform1')]))

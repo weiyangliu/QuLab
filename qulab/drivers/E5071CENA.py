@@ -108,7 +108,7 @@ class Driver(BaseDriver):
         #self.write('FORMAT:BORD NORM')
         self.write('CALC%d:SEL:FORM Phase')
         if self.model in ['E5071C']:
-            self.write(':FORM:DATA ASC')
+            self.write(':FORM:DATA ASCII')
             cmd = ("CALC%d:DATA:FDATA?" % ch) if formated else ("CALC%d:DATA:SDATA?" % ch)
         else:
             self.write('FORMAT ASCII')
