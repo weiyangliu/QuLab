@@ -79,6 +79,7 @@ class Driver(BaseDriver):
         self.write('*WAI')
         #Get the data
         self.write('FORMAT:BORD NORM')
+        self.write('CALC%d:SEL:FORM MLOG' % ch)
         if self.model in ['E5071C']:
             self.write(':FORM:DATA ASC')
             cmd = ("CALC%d:DATA:FDATA?" % ch) if formated else ("CALC%d:DATA:SDATA?" % ch)
@@ -100,27 +101,18 @@ class Driver(BaseDriver):
         #Select the measurement
         # self.pna_select(ch)
         # #Stop the sweep
-        # self.setValue('Sweep', 'OFF')
+        self.setValue('Sweep', 'OFF')
         # #Begin a measurement
-        # self.write('INIT:IMM')
+        self.write('INIT:IMM')
         self.write('*WAI')
         #Get the data
         #self.write('FORMAT:BORD NORM')
-        self.write('CALC%d:SEL:FORM Phase')
+        self.write('CALC%d:SEL:FORM Phase' % ch)
         if self.model in ['E5071C']:
             self.write(':FORM:DATA ASCII')
             cmd = ("CALC%d:DATA:FDATA?" % ch)
-        else:
-            self.write('FORMAT ASCII')
-            cmd = ("CALC%d:DATA? FDATA" % ch)
         data = np.asarray(self.query_ascii_values(cmd))
-        if formated:
-            if self.model in ['E5071C']:
-                data = data[::2]
-        else:
-            data = data[::2]+1j*data[1::2]
-        #Start the sweep
-        self.setValue('Sweep', 'ON')
+        data = data[::2]
         return data
 
     def pna_select(self, ch=1):
