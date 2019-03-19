@@ -422,6 +422,157 @@ class AlazarTechDigitizer():
 
         return A, B
 
+    def get_Traces_DMA_seq(self, preTriggerSamples=0, postTriggerSamples=1024, repeats=1000,
+                       procces=None, timeout=1, sum=False):
+        # NPT mode, postTriggerSamples 最好为128的整数倍
+        preTriggerSamples=0
+
+        samplesPerRecord = preTriggerSamples+postTriggerSamples
+        recordsPerBuffer = 2
+        recordsPerAcquisition = repeats*recordsPerBuffer
+        _, bitsPerSample = self.AlazarGetChannelInfo()
+        bytesPerSample = (bitsPerSample + 7) // 8
+        # bit移位，比如12bit采样深度，返回16bit，需要移位4bit，参考说明书SDK-guide-7.2.2 Processing_data
+        bitShift = bytesPerSample*8 - bitsPerSample
+
+        dtype = c_uint8 if bytesPerSample == 1 else c_uint16
+
+        codeZero = (1 << (bitsPerSample - 1)) -0.5
+        codeRange = (1 << (bitsPerSample - 1)) -0.5
+        bytesPerHeader = 0
+        bytesPerRecord = bytesPerSample * samplesPerRecord + bytesPerHeader
+        bytesPerBuffer = bytesPerRecord * recordsPerBuffer
+        # force buffer size to be integer of 256 * 16 = 4096, not sure why
+        # bytesPerBufferMem = int(4096 * np.ceil(bytesPerBuffer/4096.))
+
+        scaleA, scaleB = self.dRange[CHANNEL_A]/codeRange, self.dRange[CHANNEL_B]/codeRange
+
+        Buffer = (dtype*(samplesPerRecord*recordsPerBuffer))()
+
+        if procces is None and sum == True:
+            A, B = np.zeros(samplesPerRecord), np.zeros(samplesPerRecord)
+        else:
+            A, B = [], []
+
+        time_out_ms = int(1000*timeout)
+
+        # self.AlazarSetRecordSize(preTriggerSamples, postTriggerSamples)
+        # self.AlazarSetRecordCount(recordsPerAcquisition)
+        # self.removeBuffersDMA()
+        # self.buffers = []
+        # for i in range(repeats):
+        #     self.buffers.append(DMABuffer(dtype, bytesPerBuffer))
+
+        # Configure the board to make a Traditional AutoDMA acquisition
+        # self.AlazarBeforeAsyncRead(CHANNEL_A | CHANNEL_B,
+        #                       -preTriggerSamples,
+        #                       samplesPerRecord,
+        #                       recordsPerBuffer,
+        #                       recordsPerAcquisition,
+        #                       ADMA_EXTERNAL_STARTCAPTURE | ADMA_NPT | ADMA_INTERLEAVE_SAMPLES)
+        # # Post DMA buffers to board
+        # for buf in self.buffers:
+        #     self.AlazarPostAsyncBuffer(buf.addr, buf.size_bytes)
+        # try:
+        #     self.AlazarStartCapture()
+        # except:
+        #     # make sure buffers release memory if failed
+        #     self.removeBuffersDMA()
+        #     raise
+
+        try:
+            for i in range(repeats):
+                # Wait for the buffer at the head of the list of available
+                # buffers to be filled by the board.
+                buf = self.buffers[i]
+                self.AlazarWaitAsyncBufferComplete(buf.addr, timeout_ms=time_out_ms)
+                self.AlazarPostAsyncBuffer(buf.addr, buf.size_bytes)
+                self.check_errors(ignores=[RETURN_CODE.ApiTransferComplete])
+
+                buf_truncated = buf.buffer
+                _data = buf_truncated >> bitShift
+                # 两个通道数据交替，所以需要reshape
+                data = np.array(_data, dtype=np.float).reshape((samplesPerRecord,2))
+                data -= codeZero
+                ch1 = scaleA * data[:,0]
+                ch2 = scaleB * data[:,1]
+                if procces is None and sum == False:
+                    A.append(ch1[:samplesPerRecord])
+                    B.append(ch2[:samplesPerRecord])
+                elif procces is None:
+                    A += ch1[:samplesPerRecord]
+                    B += ch2[:samplesPerRecord]
+                else:
+                    a, b = procces(ch1[:samplesPerRecord],
+                                   ch2[:samplesPerRecord])
+                    A.append(a)
+                    B.append(b)
+
+        finally:
+            # release resources
+            try:
+                self.AlazarAbortAsyncRead()
+            except:
+                pass
+
+        return A, B
+
+    # wait for AlazarStartCapture
+    def set_Traces_DMA_seq(self, preTriggerSamples=0, postTriggerSamples=1024, repeats=1000,
+                       procces=None, timeout=1, sum=False):
+        # NPT mode, postTriggerSamples 最好为128的整数倍
+        preTriggerSamples=0
+
+        samplesPerRecord = preTriggerSamples+postTriggerSamples
+        recordsPerBuffer = 2
+        recordsPerAcquisition = repeats*recordsPerBuffer
+        _, bitsPerSample = self.AlazarGetChannelInfo()
+        bytesPerSample = (bitsPerSample + 7) // 8
+        # bit移位，比如12bit采样深度，返回16bit，需要移位4bit，参考说明书SDK-guide-7.2.2 Processing_data
+        bitShift = bytesPerSample*8 - bitsPerSample
+
+        dtype = c_uint8 if bytesPerSample == 1 else c_uint16
+
+        codeZero = (1 << (bitsPerSample - 1)) -0.5
+        codeRange = (1 << (bitsPerSample - 1)) -0.5
+        bytesPerHeader = 0
+        bytesPerRecord = bytesPerSample * samplesPerRecord + bytesPerHeader
+        bytesPerBuffer = bytesPerRecord * recordsPerBuffer
+        # force buffer size to be integer of 256 * 16 = 4096, not sure why
+        # bytesPerBufferMem = int(4096 * np.ceil(bytesPerBuffer/4096.))
+
+        scaleA, scaleB = self.dRange[CHANNEL_A]/codeRange, self.dRange[CHANNEL_B]/codeRange
+
+        Buffer = (dtype*(samplesPerRecord*recordsPerBuffer))()
+
+        time_out_ms = int(1000*timeout)
+
+        self.AlazarSetRecordSize(preTriggerSamples, postTriggerSamples)
+        self.AlazarSetRecordCount(recordsPerAcquisition)
+        self.removeBuffersDMA()
+        self.buffers = []
+        for i in range(repeats):
+            self.buffers.append(DMABuffer(dtype, bytesPerBuffer))
+
+        # Configure the board to make a Traditional AutoDMA acquisition
+        self.AlazarBeforeAsyncRead(CHANNEL_A | CHANNEL_B,
+                              -preTriggerSamples,
+                              samplesPerRecord,
+                              recordsPerBuffer,
+                              recordsPerAcquisition,
+                              ADMA_EXTERNAL_STARTCAPTURE | ADMA_NPT | ADMA_INTERLEAVE_SAMPLES)
+        # Post DMA buffers to board
+        for buf in self.buffers:
+            self.AlazarPostAsyncBuffer(buf.addr, buf.size_bytes)
+        # self.removeBuffersDMA()
+        self.AlazarStartCapture()
+        # print('StartCapture')
+        # try:
+        #     self.AlazarStartCapture()
+        # except:
+        #     # make sure buffers release memory if failed
+        #     self.removeBuffersDMA()
+        #     raise
 
     def get_Traces_DMA_old(self, preTriggerSamples=0, postTriggerSamples=1024, repeats=1000,
                        procces=None, timeout=1, sum=False):

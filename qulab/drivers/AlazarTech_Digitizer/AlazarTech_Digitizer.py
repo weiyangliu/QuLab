@@ -211,14 +211,30 @@ class Driver(BaseDriver):
         except IndexError:
             return ret
         return []
-
+# before getTraces_DMA run self.set_configs()
     def getTraces_DMA(self, samplesPerRecord=1024, pre=0, repeats=1000,
                       procces=None, timeout=10, sum=False):
-        self.set_configs()
+        # self.set_configs()
         a, b = self.dig.get_Traces_DMA(
             pre, samplesPerRecord-pre, repeats, procces, timeout, sum)
         #a, b = self.dig.get_Traces_NPT(samplesPerRecord, repeats, procces, timeout)
         return np.asarray(a), np.asarray(b)
+
+    def getTraces_DMA_seq(self, samplesPerRecord=1024, pre=0, repeats=1000,
+                      procces=None, timeout=10, sum=False):
+        # self.set_configs()
+        a, b = self.dig.get_Traces_DMA_seq(
+            pre, samplesPerRecord-pre, repeats, procces, timeout, sum)
+        #a, b = self.dig.get_Traces_NPT(samplesPerRecord, repeats, procces, timeout)
+        return np.asarray(a), np.asarray(b)
+
+    def setTraces_DMA_seq(self, samplesPerRecord=1024, pre=0, repeats=1000,
+                      procces=None, timeout=10, sum=False):
+        self.set_configs()
+        self.dig.set_Traces_DMA_seq(
+            pre, samplesPerRecord-pre, repeats, procces, timeout, sum)
+        #a, b = self.dig.get_Traces_NPT(samplesPerRecord, repeats, procces, timeout)
+        # return np.asarray(a), np.asarray(b)
 
     def setHeterodyneFrequency(self, samplesPerRecord, heterodyne_freq=[]):
         Exp = []
