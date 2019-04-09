@@ -547,6 +547,7 @@ class AlazarTechDigitizer():
 
         time_out_ms = int(1000*timeout)
 
+        self.AlazarSetTriggerTimeOut(time=time_out_ms)
         self.AlazarSetRecordSize(preTriggerSamples, postTriggerSamples)
         self.AlazarSetRecordCount(recordsPerAcquisition)
         self.removeBuffersDMA()
