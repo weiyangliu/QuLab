@@ -248,6 +248,21 @@ class Driver(BaseDriver):
             self.write('SLIS:SEQ:STEP%d:EJIN "%s", %s' % (step, name, jump[0]))
             self.write('SLIS:SEQ:STEP%d:EJUM "%s", %s' % (step, name, jump[1]))
 
+    def create_waveform_sequence(self,sequenceName,waveformList,size):
+        # waveformlength = self.settings.get('waveformLength',400.0e-6)
+        # srate = self.settings.get('sampleRate',2.0e9)
+        self.remove_sequence(sequenceName)
+        self.create_sequence(sequenceName,steps = len(waveformList),tracks = 1)
+        i = 0
+        for item,waveform in waveformList.items():
+            i = i+1
+            self.create_waveform(item,size)
+            self.update_waveform(points = waveform,name = item,size =size)
+            if i == len(waveformList):
+                self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i,jump=['BTR','FIRS'])
+            else:
+                self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i,jump=['BTR','NEXT'])
+
     def use_sequence(self, name, channels=[1,2]):
         for i, ch in enumerate(channels):
             self.write('SOUR%d:CASS:SEQ "%s", %d' % (ch, name, i+1))
