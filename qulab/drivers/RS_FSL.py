@@ -19,6 +19,8 @@ class Driver(BaseDriver):
 
         QReal('Frequency Start', unit='Hz', set_cmd='SENS:FREQ:STAR %(value)e%(unit)s', get_cmd='SENS:FREQ:STAR?'),
         QReal('Frequency Stop', unit='Hz', set_cmd='SENS:FREQ:STOP %(value)e%(unit)s', get_cmd='SENS:FREQ:STOP?'),
+        QReal('Frequency Center', unit='Hz', set_cmd='SENS:FREQ:CENT %(value)e%(unit)s', get_cmd='SENS:FREQ:CENT?'),
+        QReal('Frequency Span', unit='Hz', set_cmd='SENS:FREQ:SPAN %(value)e%(unit)s', get_cmd='SENS:FREQ:SPAN?'),
         QInteger('Sweep Points',value=601, set_cmd='SENS:SWE:POIN %(value)d',get_cmd='SENS:SWE:POIN?')
     ]
 

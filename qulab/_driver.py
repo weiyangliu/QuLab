@@ -73,6 +73,7 @@ class QReal(Quantity):
                  value=None,
                  unit=None,
                  ch=None,
+                 m = None,
                  get_cmd='',
                  set_cmd=''):
         super(QReal, self).__init__(

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-
-from qulab import BaseDriver, QOption, QReal, QList
+import matplotlib.pyplot as plt
+from qulab import BaseDriver, QOption, QReal, QList, QString
 
 
 class Driver(BaseDriver):
@@ -40,6 +40,24 @@ class Driver(BaseDriver):
         QReal('Volt High', unit='V', ch=1,
           set_cmd='SOUR%(ch)d:VOLT:HIGH %(value)f',
           get_cmd='SOUR%(ch)d:VOLT:HIGH?'),
+        QReal('FGphase', unit='', ch=1,
+          set_cmd='FGEN:CHAN%(ch)d:PHAS %(value)f',
+          get_cmd='FGEN:CHAN%(ch)d:PHAS?'),
+        QReal('FGoffset', unit='V', ch=1,
+          set_cmd='FGEN:CHAN%(ch)d:OFFS %(value)f',
+          get_cmd='FGEN:CHAN%(ch)d:OFFS?'),
+        QReal('FGvpp', unit='V', ch=1,
+          set_cmd='FGEN:CHAN%(ch)d:AMPL %(value)f',
+          get_cmd='FGEN:CHAN%(ch)d:AMPL?'),
+        QReal('FGdc', unit='V', ch=1,
+          set_cmd='FGEN:CHAN%(ch)d:DCL %(value)f',
+          get_cmd='FGEN:CHAN%(ch)d:DCL?'),
+        QReal('MarkHigh', unit='V', ch=1,
+          set_cmd='SOUR%(ch)d:MARK%(m)d:VOLT:HIGH %(value)f',
+          get_cmd='SOUR%(ch)d:MARK%(m)d:VOLT:HIGH?'),
+        QReal('MarkLow', unit='V', ch=1,
+          set_cmd='SOUR%(ch)d:MARK%(m)d:VOLT:LOW %(value)f',
+          get_cmd='SOUR%(ch)d:MARK%(m)d:VOLT:LOW?'),
         # output delay in time
         QReal('timeDelay', unit='s', ch=1,
           set_cmd='SOUR%(ch)d:DEL:ADJ %(value)f%(unit)s',
@@ -48,6 +66,16 @@ class Driver(BaseDriver):
         QReal('pointDelay', unit='point', ch=1,
           set_cmd='SOUR%(ch)d:DEL:POIN %(value)d',
           get_cmd='SOUR%(ch)d:DEL:POIN?'),
+
+        QReal('SJUMP',  ch=1,
+          set_cmd='SOUR%(ch)d:JUMP:FORC %(value)f',
+          ),
+
+        # QReal('SCST', ch=1,
+        #   get_cmd='SOUR%(ch)d:SCST?'),
+
+        QString('SCST', ch=1,
+          get_cmd='SOUR%(ch)d:SCST?'),
 
         QList('WList'),
 
@@ -114,6 +142,8 @@ class Driver(BaseDriver):
         self.waveform_list.append(name)
 
     def remove_waveform(self, name):
+        # WList = instr.query('WList:LIST?')
+        # self.waveform_list = WList.split(",")
         if name not in self.waveform_list:
             return
         self.write(':WLIS:WAV:DEL "%s"; *CLS' % name)
@@ -192,7 +222,7 @@ class Driver(BaseDriver):
         def format_marker_data(markers, bits):
             values = 0
             for i, v in enumerate(markers):
-                v = 0 if v is None else np.asarray(v)
+                v = 0 if v is None else np.asarray(v,dtype=int)
                 values += v << bits[i]
             return values
 
@@ -215,6 +245,8 @@ class Driver(BaseDriver):
         self.sequence_list.append(name)
 
     def remove_sequence(self, name):
+        # WList = instr.query('WList:LIST?')
+        # self.waveform_list = WList.split(",")
         if name not in self.sequence_list:
             return
         self.write('SLIS:SEQ:DEL "%s"' % name)
@@ -256,13 +288,29 @@ class Driver(BaseDriver):
         i = 0
         for item,waveform in waveformList.items():
             i = i+1
+            self.remove_waveform(item)
             self.create_waveform(item,size)
             self.update_waveform(points = waveform,name = item,size =size)
+            # print(len(waveform),item,waveform)
+            # if len(waveform)>=2:
+            #     self.update_marker(name = item,mk1=waveform[1],mk2= markerList[item],mk3= None,mk4= None,size =size)
+                # self.update_marker(name = item,mk1=np.round(waveform),mk2= np.round(waveform),mk3= None,mk4= None,size =size)
+            # if i == len(waveformList):
+            #     self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i,jump=['BTR','FIRS'])
+            # else:
+            #     self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i,jump=['BTR','NEXT'])
             if i == len(waveformList):
-                self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i,jump=['BTR','FIRS'])
+                self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i)
             else:
-                self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i,jump=['BTR','NEXT'])
+                self.set_sequence_step(name = sequenceName,sub_name = [item],step = i,wait = 'ATrigger',goto = i)
+    def update_waveform_marker(self,waveformList,size):
+        for item,waveform in waveformList.items():
+            self.update_marker(name = item,mk1= waveform,mk2= waveform,mk3= None,mk4= None,size =size)
 
     def use_sequence(self, name, channels=[1,2]):
         for i, ch in enumerate(channels):
             self.write('SOUR%d:CASS:SEQ "%s", %d' % (ch, name, i+1))
+
+    def step_jump(self, step='CURR', channels=[1,2]):
+        for i, ch in enumerate(channels):
+            self.write('SOUR%d:JUMP:FORC %s' % (ch, step))

@@ -24,7 +24,7 @@ class Driver(BaseDriver):
         # QString('Trigger',
         #   set_cmd='TRIG:SOUR %(value)s',
         #   get_cmd='TRIG:SOUR?'),
-        QReal('DCoffset',ch = 1, unit='VDC',
+        QReal('DCoffset',ch = 1, unit='V',
           set_cmd=':SOUR%(ch)d:APPL:DC 1,1, %(value).8e%(unit)s',
           get_cmd=':VOLT?'),
         QString('BurstTrigger',ch = 1, value = 'TRIG',
@@ -69,6 +69,9 @@ class Driver(BaseDriver):
         elif self.model == '33220A':
             self.max_waveform_size = 16384
             self.trigger_count  = int(float(self.query("BURS:NCYC?")))
+        if self.model == 'DG1062Z':
+            self.max_waveform_size = 50000
+            self.trigger_count  = int(float(self.query(':SOUR1:BURS:NCYC?')))
 
     def performConfig(self,ch):
         #Set trigger.
@@ -96,7 +99,8 @@ class Driver(BaseDriver):
             name = kw['name'] if 'name' in kw.keys() else 'ABS'
             freq = kw['freq'] if 'freq' in kw.keys() else None
             self.update_waveform(2*(value-offs)/vpp, name=name)
-            self.use_waveform(name, vpp=vpp, offs=offs, freq=freq)
+            # self.use_waveform(name, vpp=vpp, offs=offs, freq=freq)
+            self.use_waveform(name, vpp=vpp, offs=offs, srate=50e6)
         else:
             BaseDriver.performSetValue(self, quant, value, **kw)
 
@@ -108,27 +112,28 @@ class Driver(BaseDriver):
             self.arb_waveforms.remove(name)
             self.waveform_list.remove(name)
 
-    def update_waveform(self, values, name='ABS'):
-        if self.model == '33120A':
-            clip = lambda x: (2047*x).clip(-2047,2047).astype(int)
-        elif self.model == '33220A':
-            clip = lambda x: (8191*x).clip(-8191,8191).astype(int)
+    def update_waveform(self, values, name='ABS',ch=1):
+        MAX_PTS=8192
+        clip = lambda x: (8192*x).clip(-8192,8192).astype(int)+8192
         values = clip(values)
-        self.write_binary_values('DATA:DAC VOLATILE,', values,
-                                 datatype='h', is_big_endian=True)
-        if len(name) > 8:
-            name = name[:8]
-        name = name.upper()
+        for i in range(len(values)//MAX_PTS):
+            message = ':SOUR%d:DATA:DAC16 VOLATILE,CON,' % (ch)
+            self.write_binary_values(message,values[MAX_PTS*i:MAX_PTS*(i+1)],datatype='h' )
+        message2 = ':SOUR%d:DATA:DAC16 VOLATILE,END,' % (ch)
+        self.write_binary_values(message2,values[MAX_PTS*(len(values)//MAX_PTS):],datatype='h' )
+        # if len(name) > 8:
+        #     name = name[:8]
+        # name = name.upper()
+        #
+        # if len(self.arb_waveforms) >= 4:
+        #     for wf in self.arb_waveforms:
+        #         if wf != self.current_waveform:
+        #             self.__del_func(wf)
+        #
+        # self.write('DATA:COPY %s,VOLATILE' % name)
 
-        if len(self.arb_waveforms) >= 4:
-            for wf in self.arb_waveforms:
-                if wf != self.current_waveform:
-                    self.__del_func(wf)
-
-        self.write('DATA:COPY %s,VOLATILE' % name)
-
-    def use_waveform(self, name, freq=None, vpp=None, offs=None, ch=1):
-        freq_s = ("%.11E" % freq) if freq != None else "DEF"
+    def use_waveform(self, name, vpp=None, offs=None, ch=1,srate=50e6):
+        # freq_s = ("%.11E" % freq) if freq != None else "DEF"
         vpp_s  = ("%.5E"  % vpp)  if vpp  != None else "DEF"
         offs_s = ("%.5E"  % offs) if offs != None else "DEF"
         name = name.upper()
@@ -136,9 +141,9 @@ class Driver(BaseDriver):
             self.write('APPL:%s %s,%s,%s' % (name, freq_s, vpp_s, offs_s))
         else:
             self.write('FUNC:USER %s' % name)
-            self.write('APPL:USER %s,%s,%s' % (freq_s, vpp_s, offs_s))
-        if self.trigger_source != 'IMM':
-            self.set_trigger(source = self.trigger_source,
-                             count  = self.trigger_count)
+            self.write(':SOUR%d:APPLy:ARBitrary %s,%s,%s' % (ch, srate, vpp_s, offs_s))
+        # if self.trigger_source != 'IMM':
+        #     self.set_trigger(source = self.trigger_source,
+        #                      count  = self.trigger_count)
         self.current_waveform = name
         time.sleep(1)
